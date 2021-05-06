@@ -23,7 +23,10 @@ jobs:
            sudo -E apt-get -y purge azure-cli ghc* zulu* hhvm llvm* firefox google* dotnet* powershell openjdk* mysql* php* 
            sudo -E apt-get clean 
            sudo apt install -y expect
-           
+          
+     # Cleanup The Actions Workspace Using Custom Composite Run Actions
+       - uses: rokibhasansagar/slimhub_actions@main
+
        - name: cloning repo
          continue-on-error: true
          run: |
