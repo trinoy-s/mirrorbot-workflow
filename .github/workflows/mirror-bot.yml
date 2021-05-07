@@ -1,72 +1,68 @@
-name: setting up environment
+name: MirrorBot Environment
 
-on: [push]
-    
+on:
+  push:
+    branches: [ main ]
+    paths-ignore: 'README.md'
+  workflow_dispatch:
+   
 env:
- username: trinoy-s
+  # Change these values if you have forked it for your own works
+  GitHubMail: "trinoyrdey@gmail.com"
+  GitHubName: "trinoy-s" 
+  BRANCH: "master"
+
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: macos-latest
 
     steps:
-       - name: Checkout
-         uses: actions/checkout@main
+      - name: Checkout
+        uses: actions/checkout@main
 
-       - name: initialization
-         continue-on-error: true
-         run: |
-           sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d
-           docker rmi `docker images -q`
-           sudo apt-get remove account-plugin-facebook account-plugin-flickr account-plugin-jabber account-plugin-salut account-plugin-twitter account-plugin-windows-live account-plugin-yahoo aisleriot brltty duplicity empathy empathy-common example-content gnome-accessibility-themes gnome-contacts gnome-mahjongg gnome-mines gnome-orca gnome-screensaver gnome-sudoku gnome-video-effects gnomine landscape-common libreoffice-avmedia-backend-gstreamer libreoffice-base-core libreoffice-calc libreoffice-common libreoffice-core libreoffice-draw libreoffice-gnome libreoffice-gtk libreoffice-impress libreoffice-math libreoffice-ogltrans libreoffice-pdfimport libreoffice-style-galaxy libreoffice-style-human libreoffice-writer libsane libsane-common mcp-account-manager-uoa python3-uno rhythmbox rhythmbox-plugins rhythmbox-plugin-zeitgeist sane-utils shotwell shotwell-common telepathy-gabble telepathy-haze telepathy-idle telepathy-indicator telepathy-logger telepathy-mission-control-5 telepathy-salut totem totem-common totem-plugins printer-driver-brlaser printer-driver-foo2zjs printer-driver-foo2zjs-common printer-driver-m2300w printer-driver-ptouch printer-driver-splix
-           git config --global user.name "ElytrA8"
-           git config --global user.email "manofuranium@gmail.com"         
-           sudo -E apt-get -y purge azure-cli ghc* zulu* hhvm llvm* firefox google* dotnet* powershell openjdk* mysql* php* 
-           sudo -E apt-get clean 
-           sudo apt install -y expect
-          
-     # Cleanup The Actions Workspace Using Custom Composite Run Actions
-       - uses: rokibhasansagar/slimhub_actions@main
+      - name: Set Git Configs & Secrets
+        run: |
+          git config --global user.email ${GitHubMail}
+          git config --global user.name ${GitHubName}
+          git config --global credential.helper store
+          echo "https://${GitHubName}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
 
-       - name: cloning repo
-         continue-on-error: true
-         run: |
-           expect -c " 
-           spawn git clone ${{ secrets.REPO }} source
-           expect \"Username\"        
-           send \"${{ secrets.GHUSER }}\r\"
-           expect \"Password\"        
-           send \"${{ secrets.GHPASS }}\r\"
-           set timeout -1
-           catch wait result
-           interact"
-       - name: compilation
-         continue-on-error: true
-         run: |
-           ls
-           cd source
-           docker container prune --force
-           docker build . -t mirror-bot
-       - name: running Docker
-         timeout-minutes: 340
-         continue-on-error: true
-         run: |
-           docker run mirror-bot
-           
-       - name: Loop workflow
-         continue-on-error: true
-         run: |
-              git clone https://github.com/trinoy-s/mirrorbot-workflow loop
-              cd loop
-              echo "1" >> loop.txt
-              git add loop.txt
-              git commit -m "Workflow : Loop"
-              expect -c "
-              spawn git push -f 
-              expect \"Username\"
-              send \"${{ secrets.GHUSER }}\r\"
-              expect \"Password\"
-              send \"${{ secrets.GHPASS }}\r\"
-              expect \"main -> main\"
-              set timeout -10
-              interact"
-              
+      - name: setup docker
+        run: |
+          brew install docker docker-machine virtualbox
+
+      - name: setup vm
+        run: |
+          docker-machine create -d virtualbox --virtualbox-disk-size=150000 --virtualbox-memory=8192 --virtualbox-cpu-count=2  default
+          docker-machine env default
+
+      - name: Clone The Secret Mirror Repository
+        run: |
+          git clone https://${GitHubName}:${{ secrets.GH_TOKEN }}@github.com/${{ secrets.REPO }} source
+
+      - name: Compile The Mirroring Docker Container
+        run: |
+          cd source || exit 1
+          git checkout $BRANCH
+          eval $(docker-machine env default)
+          docker container prune --force || true
+          docker build . --rm --force-rm --compress --no-cache=true --pull --file Dockerfile -t mirror-bot
+          docker image ls
+
+      - name: running Docker
+        timeout-minutes: 340
+        continue-on-error: true
+        run: |
+          eval $(docker-machine env default)
+          docker run --privileged --rm -i mirror-bot
+
+      - name: Loop Workflow
+        continue-on-error: true
+        run: |
+          # ${GITHUB_REPOSITORY} is the repo slug which runs this script
+          git clone https://${{ secrets.GH_TOKEN }}@github.com/${GITHUB_REPOSITORY} loop
+          cd loop || exit 1
+          echo $(( RANDOM - ( RANDOM % RANDOM ) )) > looper.txt
+          git add looper.txt
+          git commit -m "Workflow : Loop at $(date -u +%D-%T%P)"
+          git push -q https://${{ secrets.GH_TOKEN2 }}@github.com/${GITHUB_REPOSITORY} HEAD:main
