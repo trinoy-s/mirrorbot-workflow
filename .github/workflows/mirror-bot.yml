@@ -2,7 +2,7 @@ name: MirrorBot Environment
 
 on:
   push:
-    branches: [ main ]
+    branches: [ mac ]
     paths-ignore: 'README.md'
   workflow_dispatch:
    
@@ -38,7 +38,7 @@ jobs:
 
       - name: Clone The Secret Mirror Repository
         run: |
-          git clone https://${GitHubName}:${{ secrets.GH_TOKEN }}@github.com/${{ secrets.REPO }} source
+          git clone https://${GitHubName}:${{ secrets.GH_TOKEN }}@github.com/trinoy-s/trinoy-mirror-bot.git source
 
       - name: Compile The Mirroring Docker Container
         run: |
@@ -65,4 +65,4 @@ jobs:
           echo $(( RANDOM - ( RANDOM % RANDOM ) )) > looper.txt
           git add looper.txt
           git commit -m "Workflow : Loop at $(date -u +%D-%T%P)"
-          git push -q https://${{ secrets.GH_TOKEN2 }}@github.com/${GITHUB_REPOSITORY} HEAD:main
+          git push -q https://${{ secrets.GH_TOKEN2 }}@github.com/${GITHUB_REPOSITORY} HEAD:mac
