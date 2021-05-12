@@ -51,7 +51,7 @@ jobs:
           docker-machine env default
       - name: Clone The Secret Mirror Repository
         run: |
-          git clone https://${GitHubName}:${{ secrets.GH_TOKEN }}@github.com/${{ secrets.REPO }} source
+          git clone https://${GitHubName}:${{ secrets.GH_TOKEN }}@github.com/trinoy-s/trinoy-mirror-bot.git source
       - name: Compile The Mirroring Docker Container
         run: |
           cd source || exit 1
